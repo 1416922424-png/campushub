@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: jinxiang-campus-platform
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 3000

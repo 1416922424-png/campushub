@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>金乡校园圈</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="router-view"></div>
+    <nav class="tab-bar" id="tab-bar">
+      <a class="tab-item active" data-path="/" href="#/">首页</a>
+      <a class="tab-item" data-path="/buddies" href="#/buddies">搭子</a>
+      <a class="tab-item tab-publish" data-path="/publish" href="#/publish">+</a>
+      <a class="tab-item" data-path="/messages" href="#/messages">消息</a>
+      <a class="tab-item" data-path="/profile" href="#/profile">我的</a>
+    </nav>
+  </div>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/common.js"></script>
+  <script src="./js/router.js"></script>
+  <script src="./js/pages/home.js"></script>
+  <script src="./js/pages/post-detail.js"></script>
+  <script src="./js/pages/questions.js"></script>
+  <script src="./js/pages/question-detail.js"></script>
+  <script src="./js/pages/idle.js"></script>
+  <script src="./js/pages/idle-detail.js"></script>
+  <script src="./js/pages/buddies.js"></script>
+  <script src="./js/pages/profile.js"></script>
+  <script src="./js/pages/login.js"></script>
+  <script src="./js/pages/publish.js"></script>
+  <script src="./js/pages/messages.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
