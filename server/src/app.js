@@ -57,6 +57,7 @@ function getTargetCountField(targetType) {
   switch (targetType) {
     case 'post': return 'commentCount';
     case 'question': return 'answerCount';
+    case 'idle': return 'commentCount';
     case 'buddy': return 'commentCount';
     default: return null;
   }
@@ -89,14 +90,115 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// 登录
+// ===== 短信验证码（真实接入占位）=====
+// 验证码存储：phone -> { code, expireAt, sentAt }
+const SMS_STORE = new Map();
+const SMS_TTL_MS = 5 * 60 * 1000;       // 验证码 5 分钟有效
+const SMS_RESEND_MS = 60 * 1000;        // 同一手机号 60s 内不能重发
+const SMS_DEV_MODE = String(process.env.SMS_DEV_MODE || 'true') !== 'false'; // 默认开发模式
+
+// 短信服务商接入：阿里云 dysmsapi20170525 最小实现
+// 依赖：npm i @alicloud/dysmsapi20170525 @alicloud/openapi-client
+// 所需环境变量：SMS_DEV_MODE / SMS_ALIYUN_ACCESS_KEY_ID / SMS_ALIYUN_ACCESS_KEY_SECRET / SMS_ALIYUN_SIGN_NAME / SMS_ALIYUN_TEMPLATE_CODE
+// 阿里云控制台：https://dysms.console.aliyun.com/  签名/模板需先审核通过
+let _aliyunSmsClient = null;
+function getAliyunSmsClient() {
+  if (_aliyunSmsClient) return _aliyunSmsClient;
+  const accessKeyId = process.env.SMS_ALIYUN_ACCESS_KEY_ID;
+  const accessKeySecret = process.env.SMS_ALIYUN_ACCESS_KEY_SECRET;
+  if (!accessKeyId || !accessKeySecret) {
+    throw new Error('阿里云短信未配置：缺少 SMS_ALIYUN_ACCESS_KEY_ID / SMS_ALIYUN_ACCESS_KEY_SECRET');
+  }
+  // 动态加载，避免开发模式强依赖 SDK
+  const Dysmsapi20170525 = require('@alicloud/dysmsapi20170525');
+  const OpenApi = require('@alicloud/openapi-client');
+  const config = new OpenApi.Config({ accessKeyId, accessKeySecret });
+  config.endpoint = process.env.SMS_ALIYUN_ENDPOINT || 'dysmsapi.aliyuncs.com';
+  _aliyunSmsClient = new Dysmsapi20170525.default(config);
+  return _aliyunSmsClient;
+}
+
+async function sendSmsCode(phone, code) {
+  // 开发模式：直接打印，不真正发送
+  if (SMS_DEV_MODE) {
+    console.log(`[SMS-DEV] 向 ${phone} 发送验证码：${code}`);
+    return { ok: true, dev: true };
+  }
+  // 生产模式：调用阿里云 SDK
+  const signName = process.env.SMS_ALIYUN_SIGN_NAME;
+  const templateCode = process.env.SMS_ALIYUN_TEMPLATE_CODE;
+  if (!signName || !templateCode) {
+    throw new Error('阿里云短信未配置：缺少 SMS_ALIYUN_SIGN_NAME / SMS_ALIYUN_TEMPLATE_CODE');
+  }
+  const client = getAliyunSmsClient();
+  const SendSmsRequest = require('@alicloud/dysmsapi20170525').SendSmsRequest;
+  const req = new SendSmsRequest({
+    phoneNumbers: phone,                 // 接收手机号，多个用逗号分隔
+    signName,                            // 已审核通过的签名
+    templateCode,                        // 已审核通过的模板CODE，如 SMS_123456789
+    templateParam: JSON.stringify({ code }) // 模板变量，模板内容形如：您的验证码为${code}，5分钟内有效
+  });
+  const resp = await client.sendSms(req);
+  // 阿里云返回结构：{ body: { code: 'OK', message, bizId, requestId } }
+  if (resp?.body?.code !== 'OK') {
+    throw new Error(`阿里云短信发送失败：${resp?.body?.message || '未知错误'}`);
+  }
+  return { ok: true, bizId: resp.body.bizId };
+}
+
+function genSmsCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// 发送验证码
+app.post('/api/v1/auth/send-code', async (req, res) => {
+  const { phone } = req.body || {};
+  if (!/^1\d{10}$/.test(phone)) return res.status(400).json(error('手机号格式不正确'));
+
+  const now = Date.now();
+  const prev = SMS_STORE.get(phone);
+  if (prev && now - prev.sentAt < SMS_RESEND_MS) {
+    return res.status(429).json(error('操作过于频繁，请稍后再试'));
+  }
+
+  const code = genSmsCode();
+  try {
+    await sendSmsCode(phone, code);
+  } catch (err) {
+    return res.status(500).json(error(err.message || '验证码发送失败'));
+  }
+  SMS_STORE.set(phone, { code, expireAt: now + SMS_TTL_MS, sentAt: now });
+
+  // 开发模式回显验证码方便联调；生产模式不回传
+  res.json(success(SMS_DEV_MODE ? { dev: true, code } : { dev: false }));
+});
+
+// 登录（手机号 + 验证码）
 app.post('/api/v1/auth/login', (req, res) => {
-  const { code, school, grade } = req.body;
-  const openid = `openid_${code || Date.now()}`;
-  let user = db.users.find(u => u.openid === openid);
+  const { phone, code, school, grade } = req.body;
+  if (!/^1\d{10}$/.test(phone)) return res.status(400).json(error('手机号格式不正确'));
+
+  const record = SMS_STORE.get(phone);
+  if (!record || record.code !== code) {
+    return res.status(400).json(error('验证码错误或已过期'));
+  }
+  if (Date.now() > record.expireAt) {
+    SMS_STORE.delete(phone);
+    return res.status(400).json(error('验证码已过期，请重新获取'));
+  }
+  // 验证通过，立即作废，防止复用
+  SMS_STORE.delete(phone);
+
+  let user = db.users.find(u => u.phone === phone);
   if (!user) {
     const nickname = `同学${Math.floor(Math.random() * 10000)}`;
-    user = insert('users', { openid, nickname, school: school || '金乡一中', grade: grade || '高二' });
+    user = insert('users', { openid: `phone_${phone}`, phone, nickname, school: school || '金乡一中', grade: grade || '高二' });
+  } else if (school || grade) {
+    // 老用户再次登录时可选更新学校/年级
+    const patch = {};
+    if (school) patch.school = school;
+    if (grade) patch.grade = grade;
+    update('users', user.id, patch);
   }
   res.json(success({ token: generateToken(user), user: rowToUser(user) }));
 });
@@ -185,6 +287,7 @@ function formatIdle(row, userId) {
     status: row.status || 'selling',
     viewCount: row.viewCount || 0,
     likeCount: row.likeCount || 0,
+    commentCount: row.commentCount || 0,
     createdAt: row.createdAt,
     seller: rowToUser(getUserById(row.userId)),
     sellerId: row.userId,
@@ -377,6 +480,12 @@ app.get('/api/v1/buddies', authMiddleware, (req, res) => {
   res.json(success({ list: list.map(r => formatBuddy(r, req.userId)), total }));
 });
 
+app.get('/api/v1/buddies/:id', authMiddleware, (req, res) => {
+  const row = findById('buddies', req.params.id);
+  if (!row) return res.status(404).json(error('搭子信息不存在'));
+  res.json(success(formatBuddy(row, req.userId)));
+});
+
 app.post('/api/v1/buddies', requireAuth, (req, res) => {
   const { type, title, content } = req.body;
   const user = getUserById(req.userId);
@@ -389,6 +498,45 @@ app.post('/api/v1/buddies', requireAuth, (req, res) => {
     grade: user.grade
   });
   res.json(success(formatBuddy(row, req.userId)));
+});
+
+// 好友
+function friendKey(a, b) {
+  const first = Math.min(parseInt(a, 10), parseInt(b, 10));
+  const second = Math.max(parseInt(a, 10), parseInt(b, 10));
+  return `${first}:${second}`;
+}
+
+function areFriends(a, b) {
+  const key = friendKey(a, b);
+  return db.friends.some(f => f.key === key);
+}
+
+app.get('/api/v1/friends/status', requireAuth, (req, res) => {
+  const otherId = parseInt(req.query.userId, 10);
+  if (!otherId || !getUserById(otherId)) return res.status(404).json(error('用户不存在'));
+  res.json(success({ isFriend: otherId === req.userId || areFriends(req.userId, otherId) }));
+});
+
+app.post('/api/v1/friends/add', requireAuth, (req, res) => {
+  const otherId = parseInt(req.body?.userId, 10);
+  if (!otherId || !getUserById(otherId)) return res.status(404).json(error('用户不存在'));
+  if (otherId === req.userId) return res.status(400).json(error('不能添加自己'));
+
+  const key = friendKey(req.userId, otherId);
+  const alreadyAdded = db.friends.some(f => f.key === key);
+  if (!alreadyAdded) {
+    insert('friends', { key, userId: Math.min(req.userId, otherId), friendId: Math.max(req.userId, otherId) });
+    const user = getUserById(req.userId);
+    insert('notifications', {
+      userId: otherId,
+      type: 'friend',
+      title: '新的好友',
+      content: `${user?.nickname || '一位同学'} 添加了你为好友`,
+      isRead: false
+    });
+  }
+  res.json(success({ isFriend: true, added: !alreadyAdded }));
 });
 
 // 评论
@@ -405,6 +553,9 @@ app.post('/api/v1/comments', requireAuth, (req, res) => {
   const { targetType, targetId, content } = req.body || {};
   const table = getTargetTable(targetType);
   if (!table || !targetId) return res.status(400).json(error('无效的评论目标'));
+  const text = String(content || '').trim();
+  if (!text) return res.status(400).json(error('评论内容不能为空'));
+  if (text.length > 500) return res.status(400).json(error('评论不能超过 500 个字符'));
   const row = findById(table, targetId);
   if (!row) return res.status(404).json(error('目标不存在'));
 
@@ -412,7 +563,7 @@ app.post('/api/v1/comments', requireAuth, (req, res) => {
     userId: req.userId,
     targetType,
     targetId: parseInt(targetId, 10),
-    content: content || ''
+    content: text
   });
 
   const countField = getTargetCountField(targetType);
