@@ -88,6 +88,43 @@ function requireLogin() {
   return true;
 }
 
+function friendActionMarkup(userId) {
+  if (!userId) return '';
+  const current = getCurrentUser();
+  if (current.id && String(current.id) === String(userId)) return '';
+  return `<button class="btn add-friend-btn" data-user-id="${escapeHtml(String(userId))}" type="button" style="padding:5px 10px;font-size:12px;border:1px solid var(--primary);color:var(--primary);background:var(--primary-light);white-space:nowrap;">加好友</button>`;
+}
+
+async function setupFriendButtons(root = document) {
+  const buttons = Array.from(root.querySelectorAll('.add-friend-btn'));
+  if (!buttons.length || !APP_TOKEN.isLoggedIn()) return;
+  await Promise.all(buttons.map(async (button) => {
+    const userId = button.dataset.userId;
+    try {
+      const status = await api.friend.status(userId);
+      if (status.isFriend) {
+        button.textContent = '已添加';
+        button.disabled = true;
+        button.style.opacity = '0.65';
+      }
+    } catch (err) {}
+    button.addEventListener('click', async () => {
+      if (button.disabled) return;
+      button.disabled = true;
+      button.textContent = '添加中';
+      try {
+        await api.friend.add(userId);
+        button.textContent = '已添加';
+        button.style.opacity = '0.65';
+        showToast('已添加好友');
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = '加好友';
+      }
+    });
+  }));
+}
+
 function getCurrentUser() {
   try {
     return JSON.parse(localStorage.getItem('userInfo') || '{}');
@@ -118,3 +155,5 @@ window.requireLogin = requireLogin;
 window.getCurrentUser = getCurrentUser;
 window.setCurrentUser = setCurrentUser;
 window.getImageUrl = getImageUrl;
+window.friendActionMarkup = friendActionMarkup;
+window.setupFriendButtons = setupFriendButtons;
