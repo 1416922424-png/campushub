@@ -64,6 +64,15 @@ async function renderHome(view, params = {}) {
       </a>
     </div>
 
+    <a class="home-publish-cta" href="#/publish" aria-label="发布帖子">
+      <span class="home-publish-icon">＋</span>
+      <span class="home-publish-copy">
+        <strong>发布帖子</strong>
+        <small>分享校园动态、寻物信息或提问</small>
+      </span>
+      <span class="home-publish-arrow">›</span>
+    </a>
+
     <div class="section-title" style="margin:0 16px 8px;font-weight:600;">热门帖子</div>
     <div class="post-list" id="post-list">
       <div class="pull-down-tip">下拉刷新</div>
