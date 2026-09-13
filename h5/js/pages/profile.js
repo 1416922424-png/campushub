@@ -28,7 +28,10 @@ async function renderProfile(view) {
         </button>
         <input id="profile-avatar-input" type="file" accept="image/*" hidden>
         <div class="profile-avatar-hint" style="margin:-2px 0 10px;color:var(--text-muted);font-size:12px;">点击头像更换照片</div>
-        <div class="profile-name">${escapeHtml(user.nickname)}</div>
+        <div class="profile-name-row">
+          <div class="profile-name" id="profile-name">${escapeHtml(user.nickname)}</div>
+          <button class="profile-name-edit" id="profile-name-edit" type="button">编辑</button>
+        </div>
         <div class="profile-school">${user.school} · ${user.grade}</div>
       </div>
       <div class="card" style="display:flex;padding:0;overflow:hidden;">
@@ -73,6 +76,8 @@ async function renderProfile(view) {
 
     const avatarPicker = document.getElementById('profile-avatar-picker');
     const avatarInput = document.getElementById('profile-avatar-input');
+    const nameEl = document.getElementById('profile-name');
+    const nameEditBtn = document.getElementById('profile-name-edit');
     let savedAvatarMarkup = avatarPicker.innerHTML;
 
     const chooseAvatar = () => avatarInput.click();
@@ -122,6 +127,40 @@ async function renderProfile(view) {
         avatarPicker.classList.remove('is-uploading');
         URL.revokeObjectURL(previewUrl);
         avatarInput.value = '';
+      }
+    });
+
+    nameEditBtn.addEventListener('click', async () => {
+      const currentName = user.nickname || '';
+      const nextName = window.prompt('请输入新的昵称（2-20个字符）', currentName);
+      if (nextName === null) return;
+      const nickname = nextName.trim();
+      if (nickname.length < 2 || nickname.length > 20) {
+        showToast('昵称需要 2-20 个字符');
+        return;
+      }
+      if (nickname === currentName) return;
+
+      nameEditBtn.disabled = true;
+      nameEditBtn.textContent = '保存中';
+      try {
+        const updated = await api.user.updateMe({ nickname });
+        user.nickname = updated.nickname || nickname;
+        nameEl.textContent = user.nickname;
+        setCurrentUser({
+          ...getCurrentUser(),
+          id: user.id,
+          nickName: user.nickname,
+          avatarUrl: user.avatarUrl,
+          school: user.school,
+          grade: user.grade
+        });
+        showToast('昵称已更新');
+      } catch (err) {
+        // api.request 已显示错误提示
+      } finally {
+        nameEditBtn.disabled = false;
+        nameEditBtn.textContent = '编辑';
       }
     });
 
