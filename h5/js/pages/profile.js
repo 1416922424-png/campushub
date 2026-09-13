@@ -22,7 +22,12 @@ async function renderProfile(view) {
         <div class="title" style="padding-right:0;">个人中心</div>
       </div>
       <div class="card profile-card">
-        <div class="profile-avatar">${user.avatarUrl ? `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="">` : escapeHtml(avatarText(user.nickname))}</div>
+        <button class="profile-avatar" id="profile-avatar-picker" type="button" aria-label="更换头像">
+          ${user.avatarUrl ? `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="${escapeHtml(user.nickname)}">` : escapeHtml(avatarText(user.nickname))}
+          <span class="profile-avatar-edit">更换</span>
+        </button>
+        <input id="profile-avatar-input" type="file" accept="image/*" hidden>
+        <div class="profile-avatar-hint">点击头像更换照片</div>
         <div class="profile-name">${escapeHtml(user.nickname)}</div>
         <div class="profile-school">${user.school} · ${user.grade}</div>
       </div>
@@ -66,6 +71,60 @@ async function renderProfile(view) {
       <div class="bottom-safe"></div>
     `;
 
+    const avatarPicker = document.getElementById('profile-avatar-picker');
+    const avatarInput = document.getElementById('profile-avatar-input');
+    let savedAvatarMarkup = avatarPicker.innerHTML;
+
+    const chooseAvatar = () => avatarInput.click();
+    avatarPicker.addEventListener('click', chooseAvatar);
+    avatarPicker.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        chooseAvatar();
+      }
+    });
+
+    avatarInput.addEventListener('change', async () => {
+      const file = avatarInput.files && avatarInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        showToast('请选择图片文件');
+        avatarInput.value = '';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('头像不能超过 5MB');
+        avatarInput.value = '';
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      avatarPicker.classList.add('is-uploading');
+      avatarPicker.innerHTML = `<img src="${previewUrl}" alt="${escapeHtml(user.nickname)}"><span class="profile-avatar-edit">上传中</span>`;
+      try {
+        const uploadedUrl = await api.upload(file);
+        const updated = await api.user.updateMe({ avatarUrl: uploadedUrl });
+        user.avatarUrl = updated.avatarUrl || uploadedUrl;
+        savedAvatarMarkup = `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="${escapeHtml(user.nickname)}"><span class="profile-avatar-edit">更换</span>`;
+        avatarPicker.innerHTML = savedAvatarMarkup;
+        setCurrentUser({
+          ...getCurrentUser(),
+          id: user.id,
+          nickName: user.nickname,
+          avatarUrl: user.avatarUrl,
+          school: user.school,
+          grade: user.grade
+        });
+        showToast('头像已更新');
+      } catch (err) {
+        avatarPicker.innerHTML = savedAvatarMarkup;
+      } finally {
+        avatarPicker.classList.remove('is-uploading');
+        URL.revokeObjectURL(previewUrl);
+        avatarInput.value = '';
+      }
+    });
+
     document.getElementById('logout-btn').addEventListener('click', () => {
       APP_TOKEN.removeToken();
       localStorage.removeItem('userInfo');
@@ -73,6 +132,20 @@ async function renderProfile(view) {
       location.hash = '#/';
     });
   } catch (err) {
+    if (err.message === '用户不存在' || err.message === '登录已过期') {
+      APP_TOKEN.removeToken();
+      localStorage.removeItem('userInfo');
+      view.innerHTML = `
+        <div class="page-error profile-session-expired">
+          <div>登录状态已失效，请重新登录</div>
+          <button class="btn btn-primary" id="profile-relogin">重新登录</button>
+        </div>
+      `;
+      document.getElementById('profile-relogin').addEventListener('click', () => {
+        location.hash = '#/login?redirect=' + encodeURIComponent('#/profile');
+      });
+      return;
+    }
     view.innerHTML = `<div class="page-error">加载失败：${escapeHtml(err.message)}</div>`;
   }
 }
