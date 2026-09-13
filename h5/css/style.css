@@ -50,13 +50,16 @@ html, body {
   .tab-bar::before { content: '金乡校园圈'; color: var(--primary); font-size: 24px; font-weight: 700; padding: 0 18px 36px; }
   .tab-item { flex: 0 0 48px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 18px; border-radius: 10px; font-size: 15px; }
   .tab-item.active { background: var(--primary-light); font-weight: 600; }
-  .tab-publish { width: auto; height: 48px; margin: 18px 0; border-radius: 10px; justify-content: center; box-shadow: none; }
+  .tab-publish { width: auto; height: 56px; margin: 18px 0 22px; border-radius: 10px; justify-content: center; box-shadow: none; }
+  .tab-publish-icon { font-size: 22px; }
+  .tab-publish-label { font-size: 14px; margin-top: 0; }
   .page-header { padding: 18px 28px; }
   .page-header .title { font-size: 20px; }
   .card, .card-flat { margin: 18px 0; }
   .post-list { padding: 0 0 24px; }
   .home-header { border-radius: 0 0 24px 24px; padding: 22px 28px; }
   .category-grid { margin: 24px 0; grid-template-columns: repeat(4, minmax(140px, 1fr)); }
+  .home-publish-cta { margin: 0 0 24px; }
 }
 
 #router-view {
@@ -109,10 +112,79 @@ a {
   border-radius: 50%;
   background: var(--primary);
   color: #fff;
-  font-size: 28px;
+  font-size: 13px;
   font-weight: 300;
   box-shadow: 0 4px 12px rgba(216, 95, 70, 0.3);
   margin-top: -16px;
+}
+
+.tab-publish-icon {
+  font-size: 22px;
+  line-height: 22px;
+  font-weight: 300;
+}
+
+.tab-publish-label {
+  font-size: 11px;
+  line-height: 13px;
+  margin-top: 2px;
+}
+
+.home-publish-cta {
+  margin: 0 16px 20px;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #fff;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(216, 95, 70, 0.22);
+}
+
+.home-publish-cta:active {
+  background: var(--primary-dark);
+  transform: translateY(1px);
+}
+
+.home-publish-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.home-publish-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.home-publish-copy strong {
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.home-publish-copy small {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 17px;
+  opacity: 0.84;
+}
+
+.home-publish-arrow {
+  font-size: 23px;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 /* Page Header */
