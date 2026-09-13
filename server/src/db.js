@@ -10,6 +10,7 @@ const db = {
   comments: [],
   likes: [],
   favorites: [],
+  friends: [],
   messages: [],
   notifications: [],
   reports: [],
