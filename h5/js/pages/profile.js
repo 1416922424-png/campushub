@@ -22,12 +22,12 @@ async function renderProfile(view) {
         <div class="title" style="padding-right:0;">个人中心</div>
       </div>
       <div class="card profile-card">
-        <button class="profile-avatar" id="profile-avatar-picker" type="button" aria-label="更换头像">
-          ${user.avatarUrl ? `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="${escapeHtml(user.nickname)}">` : escapeHtml(avatarText(user.nickname))}
-          <span class="profile-avatar-edit">更换</span>
+        <button class="profile-avatar" id="profile-avatar-picker" type="button" aria-label="更换头像" style="border:0;padding:0;position:relative;overflow:hidden;cursor:pointer;">
+          ${user.avatarUrl ? `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="${escapeHtml(user.nickname)}" style="width:100%;height:100%;object-fit:cover;display:block;">` : escapeHtml(avatarText(user.nickname))}
+          <span class="profile-avatar-edit" style="position:absolute;inset:auto 0 0;padding:3px 0;background:rgba(45,42,38,.62);color:#fff;font-size:11px;line-height:15px;font-weight:500;">更换</span>
         </button>
         <input id="profile-avatar-input" type="file" accept="image/*" hidden>
-        <div class="profile-avatar-hint">点击头像更换照片</div>
+        <div class="profile-avatar-hint" style="margin:-2px 0 10px;color:var(--text-muted);font-size:12px;">点击头像更换照片</div>
         <div class="profile-name">${escapeHtml(user.nickname)}</div>
         <div class="profile-school">${user.school} · ${user.grade}</div>
       </div>
@@ -100,12 +100,12 @@ async function renderProfile(view) {
 
       const previewUrl = URL.createObjectURL(file);
       avatarPicker.classList.add('is-uploading');
-      avatarPicker.innerHTML = `<img src="${previewUrl}" alt="${escapeHtml(user.nickname)}"><span class="profile-avatar-edit">上传中</span>`;
+      avatarPicker.innerHTML = `<img src="${previewUrl}" alt="${escapeHtml(user.nickname)}" style="width:100%;height:100%;object-fit:cover;display:block;"><span class="profile-avatar-edit" style="position:absolute;inset:auto 0 0;padding:3px 0;background:rgba(45,42,38,.62);color:#fff;font-size:11px;line-height:15px;font-weight:500;">上传中</span>`;
       try {
         const uploadedUrl = await api.upload(file);
         const updated = await api.user.updateMe({ avatarUrl: uploadedUrl });
         user.avatarUrl = updated.avatarUrl || uploadedUrl;
-        savedAvatarMarkup = `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="${escapeHtml(user.nickname)}"><span class="profile-avatar-edit">更换</span>`;
+        savedAvatarMarkup = `<img src="${escapeHtml(getImageUrl(user.avatarUrl))}" alt="${escapeHtml(user.nickname)}" style="width:100%;height:100%;object-fit:cover;display:block;"><span class="profile-avatar-edit" style="position:absolute;inset:auto 0 0;padding:3px 0;background:rgba(45,42,38,.62);color:#fff;font-size:11px;line-height:15px;font-weight:500;">更换</span>`;
         avatarPicker.innerHTML = savedAvatarMarkup;
         setCurrentUser({
           ...getCurrentUser(),
