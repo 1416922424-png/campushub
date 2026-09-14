@@ -77,7 +77,7 @@ async function renderBuddies(view) {
       listEl.querySelectorAll('.buddy-item').forEach(item => {
         item.addEventListener('click', () => {
           const id = item.dataset.id;
-          location.hash = `#/post-detail?id=${id}`;
+          location.hash = `#/buddy-detail?id=${id}`;
         });
       });
     } catch (err) {
