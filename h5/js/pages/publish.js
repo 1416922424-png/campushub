@@ -7,7 +7,7 @@ const PUBLISH_CHANNELS = [
   { key: 'buddy', label: '找搭子' }
 ];
 
-const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '其他'];
+const PUBLISH_SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '其他'];
 const IDLE_CATEGORIES = [
   { key: 'digital', label: '数码' },
   { key: 'daily', label: '生活用品' },
@@ -15,7 +15,7 @@ const IDLE_CATEGORIES = [
   { key: 'others', label: '其他' }
 ];
 const CONDITIONS = ['全新', '九成新', '八成新', '七成新'];
-const BUDDY_TYPES = [
+const PUBLISH_BUDDY_TYPES = [
   { key: 'movie', label: '电影搭子' },
   { key: 'study', label: '学习搭子' },
   { key: 'dining', label: '吃饭搭子' },
@@ -75,7 +75,7 @@ function renderPublish(view) {
       extraHtml = `
         <div class="form-group">
           <label class="form-label">科目</label>
-          <select class="form-select" id="pub-subject">${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+          <select class="form-select" id="pub-subject">${PUBLISH_SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
         </div>
       `;
       priceField.style.display = 'block';
@@ -100,7 +100,7 @@ function renderPublish(view) {
       extraHtml = `
         <div class="form-group">
           <label class="form-label">搭子类型</label>
-          <select class="form-select" id="pub-buddy-type">${BUDDY_TYPES.map(t => `<option value="${t.key}">${t.label}</option>`).join('')}</select>
+          <select class="form-select" id="pub-buddy-type">${PUBLISH_BUDDY_TYPES.map(t => `<option value="${t.key}">${t.label}</option>`).join('')}</select>
         </div>
       `;
       priceField.style.display = 'none';
