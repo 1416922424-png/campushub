@@ -59,7 +59,8 @@ async function request(url, options = {}) {
 
 const api = {
   auth: {
-    login: (code, school, grade) => request('/auth/login', { method: 'POST', body: { code, school, grade } })
+    sendCode: (phone) => request('/auth/send-code', { method: 'POST', body: { phone } }),
+    login: (phone, code, school, grade) => request('/auth/login', { method: 'POST', body: { phone, code, school, grade } })
   },
   user: {
     getMe: () => request('/users/me'),
@@ -85,6 +86,10 @@ const api = {
     list: (params) => request('/buddies', { params }),
     detail: (id) => request(`/buddies/${id}`),
     create: (data) => request('/buddies', { method: 'POST', body: data })
+  },
+  friend: {
+    status: (userId) => request('/friends/status', { params: { userId } }),
+    add: (userId) => request('/friends/add', { method: 'POST', body: { userId } })
   },
   comment: {
     list: (params) => request('/comments', { params }),
