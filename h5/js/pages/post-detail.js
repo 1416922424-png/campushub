@@ -37,10 +37,11 @@ async function renderPostDetail(view, params) {
       <div class="detail-card">
         <div class="post-header">
           <div class="avatar">${p.avatar}</div>
-          <div class="post-meta">
-            <div class="post-author">${escapeHtml(p.nickname)}</div>
-            <div class="post-info">${escapeHtml(p.schoolGrade)} · ${p.time}</div>
-          </div>
+            <div class="post-meta">
+              <div class="post-author">${escapeHtml(p.nickname)}</div>
+              <div class="post-info">${escapeHtml(p.schoolGrade)} · ${p.time}</div>
+            </div>
+            ${friendActionMarkup(p.authorId || post.author?.id)}
         </div>
         <div class="detail-title">${escapeHtml(p.title)}</div>
         <div class="detail-content">${escapeHtml(p.summary)}</div>
@@ -68,7 +69,7 @@ async function renderPostDetail(view, params) {
       </div>
       <div class="bottom-safe"></div>
       <div class="float-input-bar">
-        <input type="text" placeholder="写评论..." id="comment-input">
+        <input type="text" maxlength="500" placeholder="写评论..." id="comment-input">
         <button id="send-comment">发送</button>
       </div>
     `;
@@ -93,18 +94,22 @@ async function renderPostDetail(view, params) {
       location.hash = `#/report?id=${id}&type=post`;
     });
 
-    document.getElementById('send-comment').addEventListener('click', async () => {
+    const sendComment = async () => {
       if (!requireLogin()) return;
       const input = document.getElementById('comment-input');
+      const button = document.getElementById('send-comment');
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || button.disabled) return;
+      button.disabled = true;
       try {
         await api.comment.create({ targetType: 'post', targetId: id, content: text });
-        input.value = '';
         showToast('评论成功');
-        renderPostDetail(view, params);
-      } catch (err) {}
-    });
+        await renderPostDetail(view, params);
+      } catch (err) { button.disabled = false; }
+    };
+    document.getElementById('send-comment').addEventListener('click', sendComment);
+    document.getElementById('comment-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendComment(); });
+    await setupFriendButtons(view);
   } catch (err) {
     view.innerHTML = `<div class="page-error">加载失败：${escapeHtml(err.message)}</div>`;
   }
