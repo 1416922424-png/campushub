@@ -37,6 +37,7 @@ async function renderIdleDetail(view, params) {
             <div class="post-author">${escapeHtml(it.sellerName)}</div>
             <div class="post-info">${it.publishTime}</div>
           </div>
+          ${friendActionMarkup(item.sellerId || item.seller?.id)}
         </div>
         <div style="margin-top:16px;display:flex;gap:10px;">
           <button class="btn btn-primary" id="chat-btn" style="flex:1;">联系卖家</button>
@@ -60,7 +61,7 @@ async function renderIdleDetail(view, params) {
       </div>
       <div class="bottom-safe"></div>
       <div class="float-input-bar">
-        <input type="text" placeholder="留言询问..." id="comment-input">
+        <input type="text" maxlength="500" placeholder="留言询问..." id="comment-input">
         <button id="send-comment">发送</button>
       </div>
     `;
@@ -83,18 +84,22 @@ async function renderIdleDetail(view, params) {
       } catch (err) {}
     });
 
-    document.getElementById('send-comment').addEventListener('click', async () => {
+    const sendComment = async () => {
       if (!requireLogin()) return;
       const input = document.getElementById('comment-input');
+      const button = document.getElementById('send-comment');
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || button.disabled) return;
+      button.disabled = true;
       try {
         await api.comment.create({ targetType: 'idle', targetId: id, content: text });
-        input.value = '';
         showToast('留言成功');
-        renderIdleDetail(view, params);
-      } catch (err) {}
-    });
+        await renderIdleDetail(view, params);
+      } catch (err) { button.disabled = false; }
+    };
+    document.getElementById('send-comment').addEventListener('click', sendComment);
+    document.getElementById('comment-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendComment(); });
+    await setupFriendButtons(view);
   } catch (err) {
     view.innerHTML = `<div class="page-error">加载失败：${escapeHtml(err.message)}</div>`;
   }
