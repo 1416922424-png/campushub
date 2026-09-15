@@ -1,65 +1,7 @@
 function renderLogin(view, params) {
-  view.innerHTML = `
-    <div class="page-header">
-      <a class="back-btn" href="#/">‹</a>
-      <div class="title">登录</div>
-    </div>
-    <div style="padding:40px 24px;text-align:center;">
-      <div style="font-size:28px;font-weight:700;color:var(--primary);margin-bottom:8px;">金乡校园圈</div>
-      <div style="color:var(--text-muted);margin-bottom:40px;">金乡县城校园生活社区</div>
-
-      <div class="form-group" style="text-align:left;">
-        <label class="form-label">学校</label>
-        <select class="form-select" id="login-school">
-          ${APP_CONFIG.schools.map(s => `<option value="${s}">${s}</option>`).join('')}
-        </select>
-      </div>
-
-      <div class="form-group" style="text-align:left;">
-        <label class="form-label">年级</label>
-        <select class="form-select" id="login-grade">
-          ${APP_CONFIG.grades.map(g => `<option value="${g}">${g}</option>`).join('')}
-        </select>
-      </div>
-
-      <label style="display:flex;align-items:flex-start;font-size:13px;color:var(--text-muted);margin:16px 0;text-align:left;">
-        <input type="checkbox" id="agree" style="margin-right:8px;margin-top:2px;">
-        我已阅读并同意
-        <a href="#/user-agreement" style="color:var(--primary);">用户协议</a>
-        和
-        <a href="#/privacy-policy" style="color:var(--primary);">隐私政策</a>
-      </label>
-
-      <button class="btn btn-primary btn-block" id="login-btn" style="margin-top:8px;">微信一键登录</button>
-      <div style="margin-top:20px;font-size:13px;color:var(--text-muted);">H5 演示环境：无需真实微信授权</div>
-    </div>
-  `;
-
-  document.getElementById('login-btn').addEventListener('click', async () => {
-    const agree = document.getElementById('agree').checked;
-    if (!agree) {
-      showToast('请先同意用户协议和隐私政策');
-      return;
-    }
-    const school = document.getElementById('login-school').value;
-    const grade = document.getElementById('login-grade').value;
-
-    try {
-      const code = `h5_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      const res = await api.auth.login(code, school, grade);
-      APP_TOKEN.setToken(res.token);
-      setCurrentUser({
-        id: res.user.id,
-        nickName: res.user.nickname,
-        avatarUrl: res.user.avatarUrl,
-        school: res.user.school,
-        grade: res.user.grade
-      });
-      showToast('登录成功');
-      const redirect = params.redirect || '#/';
-      location.hash = decodeURIComponent(redirect);
-    } catch (err) {}
-  });
+  view.innerHTML = '<div class="page-header"><a class="back-btn" href="#/">‹</a><div class="title">登录</div></div><div style="padding:40px 24px;text-align:center;"><div style="font-size:28px;font-weight:700;color:var(--primary);margin-bottom:8px;">金乡校园圈</div><div style="color:var(--text-muted);margin-bottom:40px;">金乡县城校园生活社区</div><div class="form-group"><label class="form-label">手机号</label><input class="form-input" id="login-phone" type="tel" maxlength="11" placeholder="请输入 11 位手机号" inputmode="numeric"></div><div class="form-group"><label class="form-label">验证码</label><div style="display:flex;gap:8px;"><input class="form-input" id="login-code" maxlength="6" placeholder="请输入验证码" inputmode="numeric" style="flex:1"><button class="btn" id="send-code-btn">获取验证码</button></div></div><div class="form-group"><label class="form-label">学校</label><select class="form-select" id="login-school">'+APP_CONFIG.schools.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('')+'</select></div><div class="form-group"><label class="form-label">年级</label><select class="form-select" id="login-grade">'+APP_CONFIG.grades.map(function(g){return '<option value="'+g+'">'+g+'</option>';}).join('')+'</select></div><label><input type="checkbox" id="agree">我已阅读并同意<a href="#/user-agreement">用户协议</a>和<a href="#/privacy-policy">隐私政策</a></label><button class="btn btn-primary btn-block" id="login-btn">登录</button></div>';
+  var phone=document.getElementById('login-phone'),code=document.getElementById('login-code');
+  document.getElementById('send-code-btn').addEventListener('click',async function(){var p=phone.value.trim();if(!/^1\d{10}$/.test(p)){showToast('请输入正确的 11 位手机号');return;}try{var r=await api.auth.sendCode(p);if(r&&r.dev&&r.code){code.value=r.code;showToast('验证码已发送（开发模式：'+r.code+'）');}else showToast('验证码已发送，请查收短信');}catch(e){}});
+  document.getElementById('login-btn').addEventListener('click',async function(){if(!document.getElementById('agree').checked){showToast('请先同意用户协议和隐私政策');return;}var p=phone.value.trim(),c=code.value.trim();if(!/^1\d{10}$/.test(p)){showToast('请输入正确的 11 位手机号');return;}if(!c){showToast('请输入验证码');return;}try{var r=await api.auth.login(p,c,document.getElementById('login-school').value,document.getElementById('login-grade').value);APP_TOKEN.setToken(r.token);setCurrentUser({id:r.user.id,nickName:r.user.nickname,avatarUrl:r.user.avatarUrl,school:r.user.school,grade:r.user.grade});showToast('登录成功');location.hash=decodeURIComponent(params.redirect||'#/');}catch(e){}});
 }
-
-ROUTER.registerRoute('/login', renderLogin);
+ROUTER.registerRoute('/login',renderLogin);
